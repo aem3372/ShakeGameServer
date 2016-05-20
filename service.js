@@ -8,6 +8,7 @@ server.listen(8080);
 var socket = io.listen(server);
 
 var socketCount = 0;
+var clients = [];
 
 var users = {};
 
@@ -32,11 +33,14 @@ socket.of('/sock')
     client.on('uploadNick', function(data) {
       nick = data;
       users[nick] = 0;
+      clients.push(client);
     });
     client.on('uploadShake', function(data) {
       if(!nick)
         return ;
-      users[nick] += 1000;
+      if(!game)
+        return ;
+      users[nick] += (new Date().getTime() % 1000);
       console.log(nick + ': ' + users[nick]);
       client.emit('score', users[nick]);
     });
@@ -57,7 +61,25 @@ socket.of('/system')
       setTimeout(function() {
         game = true;
         console.log('started');
-        client.emit('started', {});
+        clients.forEach(function(gameClient) {
+          gameClient.emit('started', {});
+        })
+        setTimeout(function() {
+          game = false;
+          console.log('ended');
+          var rank = [];
+          for(name in users) {
+            rank.push({name: name, score: users[name]});
+          }
+          rank.sort(function(a, b) {
+            return b.score - a.score;
+          });
+          rank = rank.slice(0,3);
+          console.log(rank);
+          clients.forEach(function(gameClient) {
+            gameClient.emit('ended', rank)
+          });
+        }, duration * 1000);
       }, delay);
     });
 });
