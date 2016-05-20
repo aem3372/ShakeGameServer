@@ -9,6 +9,13 @@ var socket = io.listen(server);
 
 var socketCount = 0;
 
+var users = {};
+
+var startTime;
+var duration;
+
+var game = false;
+
 socket.of('/sock')
   .on('connection',function(client) {
     socketCount++;
@@ -17,18 +24,40 @@ socket.of('/sock')
       --socketCount;
     });
     
-    var count = 0;
+    var nick;
+
     console.log('Client connected to Up and Running namespace.');
     client.send("Welcome to 'Up and Running'");
-    setInterval(function() {client.emit("message", "tick")}, 500);
-    client.on("count", function(data) {console.log(++count);} )
-  })
+    setInterval(function() {client.emit('message', "tick")}, 500);
+    client.on('uploadNick', function(data) {
+      nick = data;
+      users[nick] = 0;
+    });
+    client.on('uploadShake', function(data) {
+      if(!nick)
+        return ;
+      users[nick] += 1000;
+      console.log(nick + ': ' + users[nick]);
+      client.emit('score', users[nick]);
+    });
+})
 
 socket.of('/system')
   .on('connection', function(client){
     console.log('Client connected to System namespace.');
     setInterval(function() {
-      client.emit("count", socketCount);
+      client.emit('count', socketCount);
     }, 1000);
+    client.on('notifyUpdate', function(data) {
+      startTime = data.startTime;
+      duration = data.duration;
+      console.log('data: ' + data + ', startTime:' + new Date(data.startTime));
+      var delay = startTime - (new Date().getTime());
+      console.log(delay);
+      setTimeout(function() {
+        game = true;
+        console.log('started');
+        client.emit('started', {});
+      }, delay);
+    });
 });
-
