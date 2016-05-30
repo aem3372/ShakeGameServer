@@ -61,6 +61,9 @@ socket.of('/system')
       setTimeout(function() {
         game = true;
         console.log('started');
+        for(name in users) {
+          users[name] = 0;
+        }
         clients.forEach(function(gameClient) {
           gameClient.emit('started', {});
         })
